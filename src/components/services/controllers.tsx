@@ -1,5 +1,5 @@
 import lodash from 'lodash';
-import { RDS } from 'aws-sdk';
+import { RDSClient, DescribeDBLogFilesCommand, DownloadDBLogFilePortionCommand } from '@aws-sdk/client-rds';
 import React from 'react';
 
 import { Template } from '../../layouts';
@@ -121,12 +121,12 @@ export async function listServiceLogs(ctx: IContext, params: IParameters): Promi
     service_plan: servicePlan,
   };
 
-  const rds = new RDS();
-  const fileList = await rds.describeDBLogFiles({
+  const client = new RDSClient({});
+  const command = new DescribeDBLogFilesCommand({
     DBInstanceIdentifier: `rdsbroker-${serviceInstance.metadata.guid}`,
     MaxRecords: 10080,
-  }).promise();
-
+  });
+  const fileList = await client.send(command);
   const template = new Template(
     ctx.viewContext,
     `Service ${serviceInstance.entity.name} Logs`,
@@ -198,11 +198,13 @@ export async function downloadServiceLogs(ctx: IContext, params: IParameters): P
     throw new UserFriendlyError(UNSUPPORTED_SERVICE_LOGS_REQUEST);
   }
 
-  const rds = new RDS();
-  const file = await rds.downloadDBLogFilePortion({
+  const client = new RDSClient({});
+  const command = new DownloadDBLogFilePortionCommand({
     DBInstanceIdentifier: `rdsbroker-${serviceInstance.metadata.guid}`,
     LogFileName: params.filename,
-  }).promise();
+  });
+
+  const file = await client.send(command);
 
   return {
     download: {
